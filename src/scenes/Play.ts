@@ -1,16 +1,18 @@
 import * as Phaser from "phaser";
-
 import starfieldUrl from "/assets/starfield.png";
+import shipUrl from "/assets/ship.png"; // Make sure to add your ship asset here
 
 export default class Play extends Phaser.Scene {
-  fire?: Phaser.Input.Keyboard.Key;
-  left?: Phaser.Input.Keyboard.Key;
-  right?: Phaser.Input.Keyboard.Key;
+  private fire?: Phaser.Input.Keyboard.Key;
+  private left?: Phaser.Input.Keyboard.Key;
+  private right?: Phaser.Input.Keyboard.Key;
 
-  starfield?: Phaser.GameObjects.TileSprite;
-  spinner?: Phaser.GameObjects.Shape;
+  private starfield?: Phaser.GameObjects.TileSprite;
+  // private spinner?: Phaser.GameObjects.Shape; // Commented out since not being used
+  private ship?: Phaser.GameObjects.Sprite; // New Ship sprite
 
-  rotationSpeed = Phaser.Math.PI2 / 1000; // radians per millisecond
+  // private rotationSpeed = Phaser.Math.PI2 / 1000; // Commented out since not being used
+  private isShipLaunched = false; // New flag to check if ship is launched
 
   constructor() {
     super("play");
@@ -18,18 +20,19 @@ export default class Play extends Phaser.Scene {
 
   preload() {
     this.load.image("starfield", starfieldUrl);
+    this.load.image("ship", shipUrl); // New Ship sprite
   }
 
-  #addKey(
+  private addKey(
     name: keyof typeof Phaser.Input.Keyboard.KeyCodes,
   ): Phaser.Input.Keyboard.Key {
     return this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes[name]);
   }
 
   create() {
-    this.fire = this.#addKey("F");
-    this.left = this.#addKey("LEFT");
-    this.right = this.#addKey("RIGHT");
+    this.fire = this.addKey("F");
+    this.left = this.addKey("LEFT");
+    this.right = this.addKey("RIGHT");
 
     this.starfield = this.add
       .tileSprite(
@@ -40,27 +43,28 @@ export default class Play extends Phaser.Scene {
         "starfield",
       )
       .setOrigin(0, 0);
-
-    this.spinner = this.add.rectangle(100, 100, 50, 50, 0xff0000);
+    this.ship = this.add.sprite(320, 400, "ship"); // Initialize Ship
   }
 
-  update(_timeMs: number, delta: number) {
-    this.starfield!.tilePositionX -= 4;
-
-    if (this.left!.isDown) {
-      this.spinner!.rotation -= delta * this.rotationSpeed;
-    }
-    if (this.right!.isDown) {
-      this.spinner!.rotation += delta * this.rotationSpeed;
+  update() {
+    // Removed '_timeMs' and '_delta'
+    if (this.starfield) {
+      this.starfield.tilePositionX -= 4;
     }
 
-    if (this.fire!.isDown) {
-      this.tweens.add({
-        targets: this.spinner,
-        scale: { from: 1.5, to: 1 },
-        duration: 300,
-        ease: Phaser.Math.Easing.Sine.Out,
-      });
+    // Lock ship controls if launched
+    if (!this.isShipLaunched) {
+      if (this.left?.isDown && this.ship) {
+        this.ship.x -= 4;
+      }
+      if (this.right?.isDown && this.ship) {
+        this.ship.x += 4;
+      }
+    }
+
+    if (this.fire?.isDown && !this.isShipLaunched && this.ship) {
+      this.isShipLaunched = true;
+      // Add logic for launching the ship
     }
   }
 }
