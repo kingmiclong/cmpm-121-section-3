@@ -1,6 +1,7 @@
-import * as Phaser from "phaser";
-import starfieldUrl from "/assets/starfield.png";
-import shipUrl from "/assets/ship.png"; // Make sure to add your ship asset here
+import * as Phaser from 'phaser';
+import starfieldUrl from '/assets/starfield.png';
+import shipUrl from '/assets/ship.png';
+import enemyShipUrl from '/assets/enemy.png';
 
 export default class Play extends Phaser.Scene {
   private fire?: Phaser.Input.Keyboard.Key;
@@ -8,46 +9,53 @@ export default class Play extends Phaser.Scene {
   private right?: Phaser.Input.Keyboard.Key;
 
   private starfield?: Phaser.GameObjects.TileSprite;
-  // private spinner?: Phaser.GameObjects.Shape; // Commented out since not being used
-  private ship?: Phaser.GameObjects.Sprite; // New Ship sprite
+  private ship?: Phaser.Physics.Arcade.Sprite;  // Changed to Physics.Arcade.Sprite
+  private enemyShips?: Phaser.Physics.Arcade.Group;
 
-  // private rotationSpeed = Phaser.Math.PI2 / 1000; // Commented out since not being used
-  private isShipLaunched = false; // New flag to check if ship is launched
+  private isShipLaunched = false;
 
   constructor() {
-    super("play");
+    super('play');
   }
 
   preload() {
-    this.load.image("starfield", starfieldUrl);
-    this.load.image("ship", shipUrl); // New Ship sprite
+    this.load.image('starfield', starfieldUrl);
+    this.load.image('ship', shipUrl);
+    this.load.image('enemyShip', enemyShipUrl);
   }
 
-  private addKey(
-    name: keyof typeof Phaser.Input.Keyboard.KeyCodes,
-  ): Phaser.Input.Keyboard.Key {
+  private addKey(name: keyof typeof Phaser.Input.Keyboard.KeyCodes): Phaser.Input.Keyboard.Key {
     return this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes[name]);
   }
 
   create() {
-    this.fire = this.addKey("F");
-    this.left = this.addKey("LEFT");
-    this.right = this.addKey("RIGHT");
+    this.fire = this.addKey('F');
+    this.left = this.addKey('LEFT');
+    this.right = this.addKey('RIGHT');
 
-    this.starfield = this.add
-      .tileSprite(
-        0,
-        0,
-        this.game.config.width as number,
-        this.game.config.height as number,
-        "starfield",
-      )
-      .setOrigin(0, 0);
-    this.ship = this.add.sprite(320, 400, "ship"); // Initialize Ship
+    this.starfield = this.add.tileSprite(0, 0, this.game.config.width as number, this.game.config.height as number, 'starfield').setOrigin(0, 0);
+    this.ship = this.physics.add.sprite(320, 400, 'ship');  // Changed to physics.add.sprite
+
+    this.enemyShips = this.physics.add.group({
+      key: 'enemyShip',
+      repeat: 4,
+      setXY: { x: 100, y: 100, stepX: 100 }
+    });
+
+    // Add collision detection
+    this.physics.add.collider(
+      this.ship!, 
+      this.enemyShips!, 
+      (ship, enemy) => {
+        this.handleCollision(ship as Phaser.Physics.Arcade.Sprite, enemy as Phaser.Physics.Arcade.Sprite);
+      }, 
+      undefined,  // Explicitly pass undefined
+      this
+    );
+    
   }
 
   update() {
-    // Removed '_timeMs' and '_delta'
     if (this.starfield) {
       this.starfield.tilePositionX -= 4;
     }
@@ -62,9 +70,31 @@ export default class Play extends Phaser.Scene {
       }
     }
 
+    // Move enemy ships
+    this.enemyShips?.children.iterate((enemy: any) => {
+      if (enemy) {
+        let typedEnemy = enemy as Phaser.GameObjects.Sprite;  // Type cast to Sprite
+        typedEnemy.x += 3;
+        if (typedEnemy.x > 800) {
+          typedEnemy.x = -100;
+        }
+      }
+      return null;  // Return null to satisfy TypeScript
+    });
+
     if (this.fire?.isDown && !this.isShipLaunched && this.ship) {
       this.isShipLaunched = true;
-      // Add logic for launching the ship
+      this.ship.setVelocity(0, -200);  // Added velocity setting for ship
     }
+  }
+
+  private handleCollision(ship: Phaser.Physics.Arcade.Sprite, enemy: Phaser.Physics.Arcade.Sprite) {
+    // Reset ship to original position
+    ship.setPosition(320, 400);
+    ship.setVelocity(0, 0);
+    this.isShipLaunched = false;
+  
+    // Destroy the enemy
+    enemy.destroy();
   }
 }
